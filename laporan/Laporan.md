@@ -43,6 +43,21 @@ seperti `HighBP` (tekanan darah tinggi), `HighChol` (kolesterol tinggi), `Smoker
 `Education` (tingkat pendidikan, skala 1--6). Hanya `BMI`, `MentHlth`, dan `PhysHlth`
 yang bersifat kontinu.
 
+**Pemilihan varian berkas.** Sumber dataset ini menyediakan tiga varian berkas, yaitu
+`diabetes_binary` (253.680 baris), `diabetes_binary_5050split` (70.692 baris), dan
+`diabetes_012` (253.680 baris, tiga kelas). Varian yang dipakai pada eksperimen ini
+adalah `diabetes_binary` tanpa pengurangan sampel.
+
+Varian `diabetes_binary_5050split` sengaja tidak dipakai. Berkas tersebut merupakan
+subset dari varian penuh yang telah diseimbangkan secara paksa: seluruh 35.346 kasus
+diabetes dipertahankan, lalu ditambahkan 35.346 kasus tidak diabetes yang diambil acak,
+sehingga proporsinya menjadi 50:50. Pemakaian berkas itu akan menghilangkan kondisi
+ketidakseimbangan kelas yang justru menjadi objek kajian pada Bab 3.1.3, sekaligus
+membuat perbandingan dengan dan tanpa bobot kelas menjadi tidak bermakna. Selain itu,
+data latih berkurang sekitar 72% tanpa menambah informasi baru. Varian `diabetes_012`
+juga tidak dipakai karena targetnya terdiri atas tiga kelas, sedangkan eksperimen ini
+membutuhkan satu dataset dengan kondisi *binary-class*.
+
 **Distribusi kelas.** Dataset ini sangat tidak seimbang (*imbalanced*):
 
 | Kelas | Keterangan | Jumlah | Persentase |
@@ -57,6 +72,9 @@ sehingga pemilihan metrik evaluasi dan strategi penanganan ketidakseimbangan men
 bagian penting dari eksperimen ini.
 
 ![Distribusi kelas dataset CDC Diabetes](../output/figures/dist_diabetes.png)
+
+Dengan demikian, distribusi 86,07 : 13,93 yang ditampilkan di atas adalah distribusi
+asli dataset, bukan hasil rekayasa penyeimbangan.
 
 ### 1.1.2. Dataset Multi-class: Dry Bean Dataset
 
