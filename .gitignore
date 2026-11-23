@@ -4,6 +4,9 @@
 venv/
 env/
 
+# Lockfile: pakai ini untuk membuat ulang environment persis sama
+# requirements-lock.txt  <- JANGAN di-ignore, sengaja di-commit
+
 # ===== Python =====
 __pycache__/
 *.py[cod]
