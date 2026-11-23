@@ -70,13 +70,20 @@ def extract_title(text: str) -> tuple[str, str]:
     """Ambil H1 pertama sebagai judul dokumen, kembalikan (judul, sisa teks).
 
     Judul dipindah ke metadata pandoc supaya tidak muncul sebagai entri TOC.
+    H1 di dalam blok kode (```) diabaikan, supaya komentar seperti '# 1. langkah'
+    tidak salah terambil sebagai judul.
     """
-    m = re.search(r"^# (.+)$", text, flags=re.MULTILINE)
-    if not m:
-        return "README", text
-    title = m.group(1).strip()
-    body = text[: m.start()] + text[m.end():]
-    return title, body
+    in_fence = False
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("```"):
+            in_fence = not in_fence
+            continue
+        if not in_fence and stripped.startswith("# "):
+            title = stripped[2:].strip()
+            body = text.replace(line, "", 1)
+            return title, body
+    return "README", text
 
 
 def drop_manual_toc(text: str) -> str:
@@ -106,11 +113,27 @@ def main() -> int:
                 print("  Install MiKTeX, lalu buka terminal baru.")
             return 1
 
-    text = sanitize(SRC_MD.read_text(encoding="utf-8"))
+    # utf-8-sig: buang BOM kalau ada, supaya regex '^# ' tetap cocok di baris 1
+    text = sanitize(SRC_MD.read_text(encoding="utf-8-sig"))
     title, text = extract_title(text)
     text = drop_manual_toc(text)
     TMP_MD.parent.mkdir(parents=True, exist_ok=True)
     TMP_MD.write_text(text, encoding="utf-8")
+
+    # Setelan blok kode: baris panjang dipecah, font diperkecil agar tidak
+    # terpotong di tepi kanan halaman.
+    header = TMP_MD.with_name("_readme_code.tex")
+    header.write_text(
+        "\\lstset{\n"
+        "  breaklines=true,\n"
+        "  breakatwhitespace=false,\n"
+        "  columns=fullflexible,\n"
+        "  basicstyle=\\ttfamily\\footnotesize,\n"
+        "  keepspaces=true,\n"
+        "  showstringspaces=false,\n"
+        "}\n",
+        encoding="utf-8",
+    )
 
     cmd = [
         "pandoc", str(TMP_MD),
@@ -126,6 +149,8 @@ def main() -> int:
         "-V", "linkcolor=blue",
         "-V", "documentclass=article",
         "-V", "lang=id",
+        "--listings",
+        "--include-in-header", str(header),
     ]
 
     print("Membangun PDF...")

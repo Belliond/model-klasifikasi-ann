@@ -13,12 +13,13 @@ dibangun dengan Python + TensorFlow/Keras.
 1. [Ringkasan Tugas](#ringkasan-tugas)
 2. [Struktur Folder](#struktur-folder)
 3. [Apa itu `.venv`?](#apa-itu-venv)
-4. [Cara Menjalankan](#cara-menjalankan)
-5. [Penjelasan File](#penjelasan-file)
-6. [Dataset](#dataset)
-7. [Library Inti yang Dipakai](#library-inti-yang-dipakai)
-8. [Perkakas Terpasang](#perkakas-terpasang)
-9. [Troubleshooting](#troubleshooting)
+4. [Persiapan dari Nol (Instalasi)](#persiapan-dari-nol-instalasi)
+5. [Cara Menjalankan](#cara-menjalankan)
+6. [Penjelasan File](#penjelasan-file)
+7. [Dataset](#dataset)
+8. [Library Inti yang Dipakai](#library-inti-yang-dipakai)
+9. [Perkakas Terpasang](#perkakas-terpasang)
+10. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -45,25 +46,31 @@ dibangun dengan Python + TensorFlow/Keras.
 ## Struktur Folder
 
 ```
-Model Klasifikasi Binary & Multiclass/
-├── README.md           Dokumentasi ini (versi teks)
-├── README.pdf          Dokumentasi ini (versi PDF, untuk dibaca/dicetak)
-├── .venv/              Environment Python terisolasi (JANGAN diubah manual)
-├── dataset/            Data
-│   ├── *.zip               Arsip asli — cadangan, jangan dihapus
-│   └── extracted/          Data siap pakai (dibaca oleh kode)
-├── notebooks/          Tempat kerja utama — file .ipynb
-├── src/                Kode bantu yang dipakai ulang
-├── output/             Hasil otomatis dari kode
-│   ├── figures/            Grafik untuk laporan
-│   ├── models/             Model tersimpan
-│   └── reports/            Hasil export PDF
-├── laporan/            Dokumen akhir yang dikumpulkan
-└── docs/               Referensi & panduan
+model-klasifikasi-ann/
+├── README.md               Dokumentasi ini (versi teks)
+├── README.pdf              Dokumentasi ini (versi PDF, untuk dibaca/dicetak)
+├── requirements-lock.txt   Daftar 140 paket + versi persisnya (untuk instalasi ulang)
+├── .venv/                  Environment Python terisolasi (DIBUAT SENDIRI, tidak ikut repo)
+├── dataset/                Data
+│   ├── *.zip                   Arsip asli — sumber dataset, ikut repo
+│   └── extracted/              Hasil ekstrak (DIBUAT SENDIRI, tidak ikut repo)
+├── notebooks/              Tempat kerja utama — file .ipynb
+├── src/                    Kode bantu yang dipakai ulang
+├── output/                 Hasil otomatis dari kode
+│   ├── figures/                Grafik untuk laporan
+│   ├── models/                 Model tersimpan
+│   └── reports/                Hasil export PDF
+├── laporan/                Dokumen akhir yang dikumpulkan
+├── deliverables/           PDF final siap kumpul (sudah dinamai sesuai format)
+└── docs/                   Referensi & panduan
 ```
 
 > 💡 **`README.pdf`** dibuat otomatis dari `README.md`. Setiap kali kamu mengubah
 > `README.md`, jalankan `python src\build_readme_pdf.py` untuk memperbarui PDF-nya.
+
+> ℹ️ Dua folder **tidak ikut di GitHub**: `.venv/` (±2 GB, berisi path absolut) dan
+> `dataset/extracted/` (data hasil ekstrak). Keduanya dibuat sendiri lewat
+> [Persiapan dari Nol](#persiapan-dari-nol-instalasi).
 
 ### Fungsi tiap folder
 
@@ -128,9 +135,22 @@ dukungan CPU). Total 2 GB itu normal untuk proyek deep learning.
 
 ```powershell
 uv venv .venv --python 3.12
+uv pip install -r requirements-lock.txt --python .venv\Scripts\python.exe
+```
+
+Kalau hanya ingin versi terbaru (tanpa mengunci versi):
+
+```powershell
+uv venv .venv --python 3.12
 uv pip install pandas numpy scikit-learn matplotlib seaborn tensorflow jupyter `
   ipykernel nbconvert nbformat jupyterlab imbalanced-learn openpyxl xlrd scipy `
   joblib tqdm --python .venv\Scripts\python.exe
+```
+
+Setelah membuat ulang, daftarkan kembali kernel-nya:
+
+```powershell
+.\.venv\Scripts\python.exe src\fix_kernel.py
 ```
 
 ### Cara install package baru
@@ -149,13 +169,257 @@ uv pip list --python .venv\Scripts\python.exe
 
 ---
 
+## Persiapan dari Nol (Instalasi)
+
+Bagian ini untuk **komputer baru** yang belum punya apa pun. Ikuti berurutan.
+Kalau kamu hanya ingin menjalankan proyek di komputer yang environment-nya sudah ada,
+langsung lompat ke [Cara Menjalankan](#cara-menjalankan).
+
+Total waktu instalasi ± **20–30 menit**, sebagian besar habis untuk mengunduh
+TensorFlow (±600 MB).
+
+### Ringkasan perkakas yang perlu dipasang
+
+| # | Perkakas | Gunanya | Wajib? |
+|---|---|---|---|
+| 1 | **Git** | Mengunduh (clone) proyek dari GitHub | ✅ Wajib |
+| 2 | **uv** | Membuat `.venv` + memasang library Python | ✅ Wajib |
+| 3 | **Python 3.12** | Bahasa pemrograman proyek ini | ✅ Wajib |
+| 4 | **Google Chrome** | Mencetak notebook jadi PDF A4 | ⚠️ Untuk export PDF |
+| 5 | **Pandoc** | Mengubah laporan `.md` → PDF | ⚠️ Untuk build laporan |
+| 6 | **MiKTeX** | Mesin LaTeX untuk PDF laporan | ⚠️ Untuk build laporan |
+
+> ℹ️ Nomor 4–6 hanya dibutuhkan kalau kamu mau **membangun ulang** PDF. Kalau cuma
+> ingin menjalankan notebook dan melihat hasil eksperimen, cukup nomor 1–3.
+
+### Langkah 1 — Buka PowerShell
+
+Tekan `Win`, ketik **PowerShell**, lalu buka. Semua perintah di bawah dijalankan
+di jendela ini.
+
+### Langkah 2 — Pasang Git, uv, dan Python
+
+Cara termudah di Windows 11 adalah **winget** (sudah terpasang otomatis di Windows 11).
+
+```powershell
+winget install --id Git.Git -e
+winget install --id astral-sh.uv -e
+```
+
+> **`uv` sekaligus memasang Python.** Kamu tidak perlu mengunduh Python manual dari
+> python.org. Perintah `uv python install 3.12` di Langkah 4 akan mengurusnya.
+
+**Kalau `winget` tidak ada** (Windows 10 lama), pasang manual:
+
+| Perkakas | Unduh di | Catatan |
+|---|---|---|
+| Git | <https://git-scm.com/download/win> | Klik *Next* terus sampai selesai |
+| uv | <https://docs.astral.sh/uv/getting-started/installation/> | Ikuti perintah PowerShell di halaman itu |
+
+**Setelah memasang, tutup PowerShell lalu buka lagi.** Ini wajib — kalau tidak,
+perintah `git` dan `uv` belum dikenali.
+
+Cek berhasil:
+
+```powershell
+git --version
+uv --version
+```
+
+Kalau keduanya menampilkan nomor versi, lanjut.
+
+### Langkah 3 — Unduh proyek dari GitHub
+
+```powershell
+cd "$HOME\Documents"
+git clone https://github.com/Belliond/model-klasifikasi-ann.git
+cd model-klasifikasi-ann
+```
+
+Sekarang kamu berada di folder proyek. Cek isinya:
+
+```powershell
+dir
+```
+
+Harus terlihat `README.md`, `notebooks`, `src`, `dataset`, `laporan`, dan
+`requirements-lock.txt`.
+
+> ⚠️ **Jangan** menyalin folder proyek lewat flashdisk lalu berharap `.venv` ikut
+> jalan. Folder `.venv` menyimpan path absolut, jadi **selalu** buat ulang `.venv`
+> di komputer baru (Langkah 4). Itu sebabnya `.venv` tidak ikut di-commit ke GitHub.
+
+### Langkah 4 — Buat environment Python
+
+```powershell
+uv python install 3.12
+uv venv .venv --python 3.12
+```
+
+Perintah pertama memasang Python 3.12 (kalau belum ada). Perintah kedua membuat
+folder `.venv` yang terisolasi.
+
+### Langkah 5 — Pasang semua library
+
+Cara **paling aman**: pasang persis versi yang dipakai proyek ini, supaya hasil
+eksperimen sama.
+
+```powershell
+uv pip install -r requirements-lock.txt --python .venv\Scripts\python.exe
+```
+
+Proses ini mengunduh ± **140 paket** (dominan TensorFlow ±600 MB). Butuh koneksi
+stabil; kalau terputus, jalankan ulang perintah yang sama — `uv` melanjutkan dari
+yang sudah terunduh.
+
+<details>
+<summary><b>Alternatif:</b> pasang tanpa mengunci versi (lebih cepat, versi bisa beda)</summary>
+
+```powershell
+uv pip install pandas numpy scikit-learn matplotlib seaborn tensorflow jupyter `
+  ipykernel nbconvert nbformat jupyterlab imbalanced-learn openpyxl xlrd scipy `
+  joblib tqdm --python .venv\Scripts\python.exe
+```
+
+Hasilnya biasanya sama, tapi versi library bisa lebih baru. Gunakan
+`requirements-lock.txt` kalau kamu ingin angka eksperimen identik dengan laporan.
+
+</details>
+
+### Langkah 6 — Daftarkan kernel Jupyter
+
+Agar notebook bisa memakai `.venv`, daftarkan sebagai kernel bernama
+**"Python (Tubes AI)"**:
+
+```powershell
+.\.venv\Scripts\python.exe -m ipykernel install --user `
+  --name tubes-ai --display-name "Python (Tubes AI)"
+```
+
+Atau pakai skrip yang sudah disediakan (sekaligus memperbaiki path kalau folder
+proyek pernah dipindah/di-rename):
+
+```powershell
+.\.venv\Scripts\python.exe src\fix_kernel.py
+```
+
+### Langkah 7 — Ekstrak dataset
+
+File dataset di repo masih berbentuk `.zip`, jadi harus diekstrak dulu.
+Folder `dataset\extracted\` **tidak** ikut di-commit (ukurannya besar), jadi
+langkah ini wajib.
+
+```powershell
+New-Item -ItemType Directory -Force -Path dataset\extracted\cdc_diabetes, dataset\extracted\dry_bean
+Expand-Archive dataset\diabetes.zip -DestinationPath dataset\extracted\cdc_diabetes -Force
+Expand-Archive "dataset\dry+bean+dataset.zip" -DestinationPath dataset\extracted\dry_bean -Force
+```
+
+Cek hasilnya:
+
+```powershell
+dir dataset\extracted\cdc_diabetes
+dir dataset\extracted\dry_bean\DryBeanDataset
+```
+
+Yang harus ada:
+
+| Folder | File yang dibutuhkan kode |
+|---|---|
+| `dataset\extracted\cdc_diabetes\` | `diabetes_binary_health_indicators_BRFSS2015.csv` |
+| `dataset\extracted\dry_bean\DryBeanDataset\` | `Dry_Bean_Dataset.xlsx` |
+
+> ℹ️ Proyek ini hanya memakai **2 dari 5** dataset yang disediakan. Tiga sisanya
+> (Obesity, Phishing, Students Dropout) tidak diperlukan untuk menjalankan notebook
+> utama, jadi tidak disertakan di repo.
+
+### Langkah 8 — Pasang perkakas PDF (opsional)
+
+Hanya kalau kamu perlu membangun ulang PDF. Lewati kalau tidak.
+
+```powershell
+winget install --id Google.Chrome -e
+winget install --id JohnMacFarlane.Pandoc -e
+winget install --id MiKTeX.MiKTeX -e
+```
+
+**Penting untuk MiKTeX:** saat pertama kali dipakai, ia akan menanyakan setelan
+*"Install missing packages on-the-fly"*. Pilih **Yes**. Kalau tidak, build laporan
+akan menggantung menunggu konfirmasi.
+
+**Pandoc dan MiKTeX tidak otomatis masuk PATH.** Skrip build sudah menanganinya,
+tapi kalau kamu ingin memanggil `pandoc` langsung dari terminal, tambahkan sekali:
+
+```powershell
+$miktex = "$env:LOCALAPPDATA\Programs\MiKTeX\miktex\bin\x64"
+$env:PATH = "$env:LOCALAPPDATA\Pandoc;$miktex;$env:PATH"
+```
+
+### Langkah 9 — Verifikasi instalasi
+
+Ini langkah paling penting: memastikan semua library benar-benar terbaca.
+
+```powershell
+.\.venv\Scripts\python.exe src\check_env.py
+```
+
+Semua baris harus berawalan **`OK`**. Kalau ada `FAIL`, lihat bagian
+[Troubleshooting](#troubleshooting).
+
+Lalu tes dataset sudah terbaca:
+
+```powershell
+.\.venv\Scripts\python.exe src\smoke_test.py
+```
+
+Kalau muncul shape kedua dataset dan distribusi kelasnya, instalasi **selesai**.
+Lanjut ke [Cara Menjalankan](#cara-menjalankan).
+
+### Ringkasan perintah (copy-paste sekaligus)
+
+Untuk yang sudah berpengalaman, ini seluruh rangkaian Langkah 2–9:
+
+```powershell
+# 1. perkakas dasar
+winget install --id Git.Git -e
+winget install --id astral-sh.uv -e
+# tutup & buka ulang PowerShell setelah ini
+
+# 2. ambil proyek
+cd "$HOME\Documents"
+git clone https://github.com/Belliond/model-klasifikasi-ann.git
+cd model-klasifikasi-ann
+
+# 3. environment + library
+uv python install 3.12
+uv venv .venv --python 3.12
+uv pip install -r requirements-lock.txt --python .venv\Scripts\python.exe
+
+# 4. kernel jupyter
+.\.venv\Scripts\python.exe src\fix_kernel.py
+
+# 5. dataset
+New-Item -ItemType Directory -Force -Path dataset\extracted\cdc_diabetes, dataset\extracted\dry_bean
+Expand-Archive dataset\diabetes.zip -DestinationPath dataset\extracted\cdc_diabetes -Force
+Expand-Archive "dataset\dry+bean+dataset.zip" -DestinationPath dataset\extracted\dry_bean -Force
+
+# 6. verifikasi
+.\.venv\Scripts\python.exe src\check_env.py
+.\.venv\Scripts\python.exe src\smoke_test.py
+```
+
+---
+
 ## Cara Menjalankan
 
 ### 1. Buka terminal di folder proyek
 
 ```powershell
-cd "C:\Knowledge\Intelegensi Buatan\Model Klasifikasi Binary & Multiclass"
+cd "$HOME\Documents\model-klasifikasi-ann"
 ```
+
+> ℹ️ Sesuaikan dengan lokasi hasil `git clone` kamu. Yang penting kamu berada di
+> folder yang berisi `README.md` dan `notebooks\`.
 
 ### 2. Aktifkan environment
 
@@ -323,29 +587,58 @@ Spesifikasi resmi dari dosen. **Baca ini** untuk aturan pengumpulan.
 
 ## Dataset
 
-Lima dataset tersedia, sudah diekstrak ke `dataset/extracted/`.
+Tugas menyediakan **lima** dataset, tetapi proyek ini **hanya memakai dua**:
 
-| Dataset | Baris | Kolom | Kelas | Tipe | Path (`utils.DATA_PATHS`) |
-|---|---|---|---|---|---|
-| CDC Diabetes | 253.680 | 22 | 2 (86,1% / 13,9%) | Binary | `cdc_diabetes_binary` |
-| PhiUSIIL Phishing | 235.795 | 56 | 2 (57% / 43%) | Binary | `phishing_url` |
-| Dry Bean | 13.611 | 17 | 7 (26% s.d. 3,8%) | Multi-class | `dry_bean` |
-| Students Dropout | 4.424 | 37 | 3 (49,9/32,1/17,9) | Multi-class | `students_dropout` |
-| Obesity | 2.111 | 17 | 7 (16,6% s.d. 12,9%) | Multi-class | `obesity` |
+| Dataset | Baris | Kolom | Kelas | Tipe | Path (`utils.DATA_PATHS`) | Di repo? |
+|---|---|---|---|---|---|---|
+| CDC Diabetes | 253.680 | 22 | 2 (86,1% / 13,9%) | Binary | `cdc_diabetes_binary` | ✅ |
+| Dry Bean | 13.611 | 17 | 7 (26% s.d. 3,8%) | Multi-class | `dry_bean` | ✅ |
+| PhiUSIIL Phishing | 235.795 | 56 | 2 (57% / 43%) | Binary | `phishing_url` | ❌ |
+| Students Dropout | 4.424 | 37 | 3 (49,9/32,1/17,9) | Multi-class | `students_dropout` | ❌ |
+| Obesity | 2.111 | 17 | 7 (16,6% s.d. 12,9%) | Multi-class | `obesity` | ❌ |
 
-**Rekomendasi pasangan:** CDC Diabetes (binary) + Dry Bean (multi-class)
-— keduanya sudah numerik penuh dan tanpa missing value, jadi bisa fokus ke eksplorasi arsitektur ANN.
+**Kenapa CDC Diabetes + Dry Bean?** Keduanya sudah numerik penuh dan tanpa missing
+value, jadi bisa fokus ke eksplorasi arsitektur ANN. Satu mewakili kasus
+**binary-class tidak seimbang**, satu mewakili **multi-class dengan kelas minoritas
+ekstrem** — dua kondisi yang berbeda dan sama-sama menarik dibahas.
+
+### Berkas dataset di repo
+
+```
+dataset/
+├── diabetes.zip            6,0 MB  → berisi 3 varian CDC Diabetes
+└── dry+bean+dataset.zip    4,5 MB  → berisi Dry Bean (.arff, .txt, .xlsx)
+```
+
+Keduanya **arsip asli dari sumber**, sengaja disimpan apa adanya. Ekstrak dengan
+perintah di [Langkah 7](#langkah-7--ekstrak-dataset).
+
+### Varian CDC Diabetes yang dipakai
+
+Arsip `diabetes.zip` berisi tiga varian:
+
+| Berkas | Baris | Dipakai? |
+|---|---|---|
+| `diabetes_binary_health_indicators_BRFSS2015.csv` | 253.680 | ✅ **Ya** |
+| `diabetes_binary_5050split_health_indicators_BRFSS2015.csv` | 70.692 | ❌ Tidak |
+| `diabetes_012_health_indicators_BRFSS2015.csv` | 253.680 | ❌ Tidak |
+
+Varian `5050split` sengaja **tidak** dipakai karena sudah diseimbangkan paksa menjadi
+50:50 — kondisi ketidakseimbangan kelas yang justru menjadi objek kajian jadi hilang.
+Varian `diabetes_012` (tiga kelas) juga tidak dipakai karena proyek ini butuh satu
+kasus binary-class.
 
 ### ⚠️ Jebakan dataset
-
-**PhiUSIIL Phishing** punya kolom teks (`FILENAME`, `URL`, `Domain`, `TLD`, `Title`).
-Kalau tidak dibuang, model bisa "curang" dan akurasi jadi ~100% tapi tidak bermakna.
-Gunakan `utils.PHISHING_DROP_COLS` untuk membuangnya.
 
 **CDC Diabetes** imbalance (86% vs 14%). Bahan diskusi yang bagus untuk SMOTE / `class_weight`.
 
 **Dry Bean** punya kelas minoritas ekstrem (BOMBAY hanya 3,8%). Perhatikan F1-score per kelas,
 bukan hanya akurasi.
+
+**PhiUSIIL Phishing** (tidak dipakai di proyek ini) punya kolom teks (`FILENAME`, `URL`,
+`Domain`, `TLD`, `Title`). Kalau suatu saat dipakai, kolom itu wajib dibuang lewat
+`utils.PHISHING_DROP_COLS` — kalau tidak, model bisa "curang" dan akurasi jadi ~100%
+tapi tidak bermakna.
 
 ---
 
@@ -428,6 +721,21 @@ Yang dinilai bukan panjang daftarnya, tapi apakah kamu tahu **kenapa** pakai tia
 
 ## Perkakas Terpasang
 
+### Perkakas sistem (di luar Python)
+
+| Kategori | Perkakas | Versi di mesin pengembang | Wajib? |
+|---|---|---|---|
+| Version control | Git | 2.55.0 | ✅ |
+| Package manager Python | uv | 0.13.9 | ✅ |
+| Python | CPython | 3.12.10 | ✅ |
+| Browser | Google Chrome | — | ⚠️ untuk export PDF |
+| Konversi dokumen | Pandoc | 3.14 | ⚠️ untuk build laporan |
+| LaTeX | MiKTeX (XeTeX) | 25.12 | ⚠️ untuk build laporan |
+
+Cara memasangnya ada di [Persiapan dari Nol](#persiapan-dari-nol-instalasi).
+
+### Library Python
+
 | Kategori | Package | Versi |
 |---|---|---|
 | Data | pandas | 3.1.1 |
@@ -443,8 +751,8 @@ Yang dinilai bukan panjang daftarnya, tapi apakah kamu tahu **kenapa** pakai tia
 | Notebook | jupyterlab | 4.6.6 |
 | Notebook | nbconvert | 7.17.2 |
 | Pendukung | joblib / tqdm | 1.6.0 / 4.70.1 |
-| PDF | pandoc | 3.14 |
-| PDF | MiKTeX (xelatex) | — |
+
+Daftar lengkap 140 paket beserta versinya ada di **`requirements-lock.txt`**.
 
 ### Catatan GPU
 
@@ -458,15 +766,38 @@ Tidak perlu install CUDA.
 
 ## Troubleshooting
 
+### Masalah saat instalasi
+
+| Masalah | Penyebab | Solusi |
+|---|---|---|
+| `git` / `uv` **tidak dikenali** setelah install | PowerShell lama belum membaca PATH baru | **Tutup PowerShell, buka lagi.** Kalau masih gagal, restart laptop |
+| `winget` **tidak dikenali** | Windows 10 lama / Store dihapus | Pasang manual dari situs resmi (lihat Langkah 2) |
+| `uv pip install` **gagal di tengah** (koneksi putus) | Unduhan TensorFlow besar | Jalankan ulang perintah yang sama — `uv` melanjutkan dari cache |
+| Instalasi **lama sekali / seperti hang** | Mengunduh TensorFlow ±600 MB | Normal. Cek Task Manager, pastikan ada aktivitas jaringan |
+| `running scripts is disabled` | Kebijakan eksekusi PowerShell | `Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned` |
+| `No module named pip` | Normal — `.venv` dibuat `uv` tanpa pip | Gunakan `uv pip install ... --python .venv\Scripts\python.exe` |
+| `uv venv` bilang **Python tidak ditemukan** | Python 3.12 belum dipasang | `uv python install 3.12` lalu ulangi |
+| `Expand-Archive` bilang **file tidak ada** | Salah folder, atau nama file beda | Pastikan `dir` menampilkan `diabetes.zip`. Nama `dry+bean+dataset.zip` mengandung `+`, jadi **pakai tanda kutip** |
+| Dataset **tidak ditemukan** saat notebook jalan | `dataset/extracted/` belum dibuat | Ulangi [Langkah 7](#langkah-7--ekstrak-dataset) |
+
+### Masalah saat menjalankan
+
 | Masalah | Solusi |
 |---|---|
-| `running scripts is disabled` | `Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned` |
 | `jupyter` tidak dikenali | Environment belum aktif — jalankan `Activate.ps1` |
-| Kernel tidak muncul | Pilih **"Python (Tubes AI)"**, lalu restart Jupyter |
+| Kernel **"Python (Tubes AI)"** tidak muncul | Jalankan `.\.venv\Scripts\python.exe src\fix_kernel.py`, lalu restart Jupyter |
 | `ModuleNotFoundError` | Pastikan pakai `.venv\Scripts\python.exe`, bukan `python` global |
-| `No module named pip` | Normal. Gunakan `uv pip install ... --python .venv\Scripts\python.exe` |
+| Notebook jalan tapi **sangat lambat** | Wajar di CPU. Dataset CDC Diabetes ±203 ribu baris butuh beberapa menit |
+| Angka hasil **beda** dari laporan | Pastikan pakai `requirements-lock.txt` dan tidak mengubah `SEED = 42` |
+
+### Masalah saat build PDF
+
+| Masalah | Solusi |
+|---|---|
 | Export PDF gagal | Cek `xelatex --version`. Jalankan nbconvert dari folder root proyek |
-| Export PDF menggantung | Cek Task Manager, matikan proses `xelatex` yang menggantung |
+| Export PDF **menggantung** | MiKTeX menunggu konfirmasi package. Set *install missing packages* ke **Yes** |
+| `pandoc` tidak dikenali | Pandoc tidak di PATH — lihat catatan PATH di Langkah 8 |
+| PDF notebook bukan A4 | Jangan pakai `nbconvert --to pdf`. Pakai `python src\build_notebook_pdf.py` |
 | Library rusak / aneh | `python src\check_env.py` untuk diagnosa |
 
 ---
