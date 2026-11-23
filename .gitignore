@@ -1,0 +1,62 @@
+# ===== Virtual environment =====
+# Jangan di-commit: 2 GB dan bisa dibuat ulang dengan perintah di README
+.venv/
+venv/
+env/
+
+# ===== Python =====
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# ===== Jupyter =====
+.ipynb_checkpoints/
+*/.ipynb_checkpoints/*
+.nbconvert/
+*.nbconvert.ipynb
+
+# ===== LaTeX / PDF sementara =====
+*.aux
+*.log
+*.out
+*.toc
+*.synctex.gz
+*.fls
+*.fdb_latexmk
+notebook.tex
+*_files/
+
+# ===== Hasil eksperimen =====
+# Model bisa besar; aktifkan lagi kalau memang mau disimpan di repo
+output/models/*.keras
+output/models/*.h5
+output/models/*.pkl
+
+# File antara saat build PDF
+output/reports/_*.md
+output/reports/_*.pdf
+
+# ===== Data mentah =====
+# Dataset asli cukup diunduh ulang dari sumber; extract ulang pakai skrip
+dataset/extracted/
+
+# ===== OS & Editor =====
+Thumbs.db
+desktop.ini
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*~
+
+# ===== Rahasia =====
+.env
+.env.local
+*.key
+secrets.*
