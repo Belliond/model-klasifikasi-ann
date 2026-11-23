@@ -44,6 +44,11 @@ output/models/*.pkl
 # File antara saat build PDF
 output/reports/_*.md
 output/reports/_*.pdf
+output/reports/_*.txt
+output/reports/_*.html
+
+# Skrip bantu sementara
+src/_*.py
 
 # ===== Data mentah =====
 # Dataset asli cukup diunduh ulang dari sumber; extract ulang pakai skrip

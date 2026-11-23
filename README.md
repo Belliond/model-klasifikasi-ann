@@ -182,9 +182,19 @@ jupyter lab
 
 ### 4. Export notebook ke PDF
 
+Notebook di-export ke HTML dulu, lalu dicetak ke PDF ukuran A4 oleh Chrome.
+
 ```powershell
-jupyter nbconvert --to pdf "notebooks\NAMA_NOTEBOOK.ipynb" --output-dir output\reports
+# 1. notebook -> HTML
+jupyter nbconvert --to html --output-dir output\reports --output ModelANN_TubesAI notebooks\ModelANN_TubesAI.ipynb
+
+# 2. HTML -> PDF A4 (butuh Google Chrome terpasang)
+python src\build_notebook_pdf.py
 ```
+
+> ℹ️ `nbconvert --to pdf` langsung tidak dipakai karena hasilnya sering gagal di
+> Windows dan ukuran halamannya bukan A4. Skrip `build_notebook_pdf.py` menyuntikkan
+> CSS `@page { size: A4 }` sebelum mencetak, sehingga hasilnya konsisten A4.
 
 ### 5. Cek kesehatan environment (opsional)
 
@@ -282,6 +292,15 @@ python src\build_readme_pdf.py
 ```
 
 Jalankan setiap kali `README.md` diubah. Butuh `pandoc` dan `xelatex` — keduanya sudah terpasang.
+
+### `src/build_notebook_pdf.py` — build notebook ke PDF A4
+
+Mengubah `output/reports/ModelANN_TubesAI.html` menjadi PDF berukuran A4
+(595 x 842 pt) memakai Chrome headless. Jalankan setelah notebook di-export ke HTML.
+
+```powershell
+python src\build_notebook_pdf.py
+```
 
 ### `src/smoke_test.py` — tes cepat dataset
 

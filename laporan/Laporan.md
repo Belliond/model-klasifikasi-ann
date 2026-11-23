@@ -222,6 +222,13 @@ Pertama, `random_state=42` ditetapkan agar pembagian data bersifat deterministik
 Tanpa nilai tetap, pembagian akan berbeda setiap kali kode dijalankan, sehingga hasil
 eksperimen tidak dapat direproduksi.
 
+Nilai tetap tersebut belum cukup untuk membuat seluruh eksperimen reproduksibel, karena
+proses pelatihan ANN juga melibatkan keacakan pada inisialisasi bobot dan pada
+pemilihan neuron yang dimatikan oleh dropout. Karena itu, notebook menetapkan `SEED = 42`
+pada awal eksekusi dan meneruskannya ke `random.seed()`, `np.random.seed()`, serta
+`tf.random.set_seed()`. Dengan ketiga penetapan tersebut, menjalankan ulang notebook
+dari sel pertama akan menghasilkan model dan metrik yang sama persis.
+
 Kedua, `stratify` diisi dengan variabel target agar proporsi setiap kelas tetap sama
 pada data latih dan data uji. Tanpa stratifikasi, pembagian acak berisiko membuat kelas
 minoritas seperti BOMBAY (3,84%) tidak terwakili secara proporsional pada data uji,
@@ -265,7 +272,7 @@ tidak berkontribusi terhadap proses pembelajaran.
 | Dataset | Sebelum standardisasi | Sesudah standardisasi |
 |---|---|---|
 | Dry Bean | min 0,000567 \quad max 251.082 | min -14,467 \quad max 6,672 |
-| CDC Diabetes | nilai biner dan ordinal | min -5,061 \quad max 10,552 |
+| CDC Diabetes | nilai biner dan ordinal | min -5,060 \quad max 10,552 |
 
 Sebagai contoh konkret, rata-rata tiga fitur pada data latih Dry Bean sebelum dan
 sesudah standardisasi:
@@ -566,7 +573,7 @@ Perhitungan jumlah parameter:
 | Aktivasi keluaran | Softmax | Sigmoid |
 | Fungsi kerugian | Categorical cross-entropy | Binary cross-entropy |
 | Bentuk target | One-hot (7 kolom) | Skalar (0 atau 1) |
-| Pengambilan keputusan | `argmax` dari 7 probabilitas | Threshold 0,5 |
+| Pengambilan keputusan | `argmax` dari 7 probabilitas | Threshold 0,5 (dievaluasi), 0,60 (dipakai) |
 | Class weight | Tidak | Ya |
 | Batch size | 64 | 256 |
 
@@ -623,28 +630,31 @@ benar-benar belum pernah dilihat.
 ### 3.1.1. Pelatihan Model Multi-class (Dry Bean)
 
 Model multi-class dilatih dengan maksimum 60 epoch dan early stopping dengan
-`patience=8`. Pelatihan berhenti pada epoch ke-36 karena nilai loss validasi tidak
-membaik selama delapan epoch berturut-turut. Loss validasi terendah dicapai pada
-epoch ke-28, sehingga bobot model dikembalikan ke kondisi epoch tersebut.
+`patience=8`. Berbeda dari model binary, pelatihan model ini **tidak pernah memicu
+early stopping**: tidak pernah ada delapan epoch berturut-turut tanpa perbaikan loss
+validasi, sehingga seluruh 60 epoch terpakai. Loss validasi terendah dicapai pada
+epoch ke-58 (0,1841), dan bobot model dikembalikan ke kondisi epoch tersebut.
 
 Ringkasan perkembangan pelatihan pada beberapa epoch kunci:
 
 | Epoch | Acc. latih | Acc. validasi | Loss latih | Loss validasi |
 |---|---|---|---|---|
-| 1 | 0,6427 | 0,8770 | 1,0320 | 0,4497 |
-| 2 | 0,8536 | 0,9223 | 0,4476 | 0,2770 |
-| 3 | 0,8866 | 0,9223 | 0,3356 | 0,2385 |
-| 5 | 0,8981 | 0,9259 | 0,2896 | 0,2186 |
-| 10 | 0,9207 | 0,9284 | 0,2405 | 0,1989 |
-| 20 | 0,9210 | 0,9308 | 0,2188 | 0,1917 |
-| **28** | **0,9248** | **0,9345** | **0,2130** | **0,1893** |
-| 30 | 0,9247 | 0,9333 | 0,2141 | 0,1896 |
-| 36 | 0,9279 | 0,9266 | 0,2046 | 0,1950 |
+| 1 | 0,6561 | 0,8439 | 0,9690 | 0,4686 |
+| 2 | 0,8480 | 0,9100 | 0,4546 | 0,2960 |
+| 3 | 0,8834 | 0,9241 | 0,3446 | 0,2549 |
+| 5 | 0,9048 | 0,9272 | 0,2778 | 0,2277 |
+| 10 | 0,9167 | 0,9308 | 0,2438 | 0,2093 |
+| 20 | 0,9253 | 0,9315 | 0,2188 | 0,1944 |
+| 30 | 0,9241 | 0,9339 | 0,2145 | 0,1887 |
+| 40 | 0,9292 | 0,9339 | 0,2061 | 0,1858 |
+| 50 | 0,9276 | 0,9321 | 0,2057 | 0,1875 |
+| **58** | **0,9290** | **0,9339** | **0,1989** | **0,1841** |
+| 60 | 0,9301 | 0,9351 | 0,1951 | 0,1841 |
 
 Dari tabel tersebut dapat diamati tiga hal penting.
 
 **Pertama, konvergensi terjadi sangat cepat.** Pada epoch pertama, akurasi latih baru
-mencapai 0,6427, tetapi pada epoch kelima sudah melonjak ke 0,8981. Sebagian besar
+mencapai 0,6561, tetapi pada epoch kelima sudah melonjak ke 0,9048. Sebagian besar
 pembelajaran terjadi dalam lima epoch pertama.
 
 **Kedua, terjadi *diminishing returns* yang sangat jelas.** Kenaikan akurasi validasi
@@ -652,18 +662,18 @@ pada setiap rentang epoch adalah sebagai berikut:
 
 | Rentang epoch | Kenaikan akurasi validasi |
 |---|---|
-| 1 $\rightarrow$ 5 | +4,89 poin persen |
-| 5 $\rightarrow$ 10 | +0,25 poin persen |
-| 10 $\rightarrow$ 28 | +0,61 poin persen |
-| 28 $\rightarrow$ 36 | -0,79 poin persen |
+| 1 $\rightarrow$ 5 | +8,32 poin persen |
+| 5 $\rightarrow$ 10 | +0,36 poin persen |
+| 10 $\rightarrow$ 30 | +0,31 poin persen |
+| 30 $\rightarrow$ 58 | +0,00 poin persen |
 
 Setelah epoch ke-10, akurasi validasi bergerak mendatar di kisaran 0,93. Kenaikan
-18 epoch berikutnya (epoch 10 ke epoch 28) hanya sebesar 0,61 poin persen, dan setelah
-itu nilainya justru menurun. Ini menunjukkan bahwa model telah mencapai batas
-kemampuannya dalam menangkap pola dari data yang tersedia.
+20 epoch berikutnya (epoch 10 ke epoch 30) hanya sebesar 0,31 poin persen, dan dari
+epoch 30 hingga epoch 58 nilainya praktis tidak berubah. Ini menunjukkan bahwa model
+telah mencapai batas kemampuannya dalam menangkap pola dari data yang tersedia.
 
 **Ketiga, akurasi validasi lebih tinggi daripada akurasi latih.** Sebagai contoh pada
-epoch 28, akurasi latih 0,9248 sedangkan akurasi validasi 0,9345. Kondisi ini bukan
+epoch 58, akurasi latih 0,9290 sedangkan akurasi validasi 0,9339. Kondisi ini bukan
 merupakan kesalahan, melainkan konsekuensi langsung dari penggunaan dropout. Selama
 pelatihan, 20% neuron dimatikan secara acak sehingga model bekerja dalam kondisi yang
 lebih sulit. Pada saat validasi, seluruh neuron diaktifkan sehingga performa model
@@ -672,39 +682,42 @@ meningkat.
 ![Riwayat pelatihan model multi-class](../output/figures/history_multi.png)
 
 Grafik di atas menunjukkan bahwa kurva loss latih dan loss validasi bergerak berdekatan
-selama 28 epoch pertama, dengan celah yang tidak melebar. Pola ini menandakan bahwa
-model belum mengalami overfitting berat. Namun setelah epoch ke-28, kurva loss validasi
-mulai bergerak mendatar dan sedikit menanjak, sementara kurva loss latih masih turun.
-Selisih keduanya yang kembali melebar inilah yang dideteksi oleh early stopping sebagai
-awal overfitting, sehingga pelatihan dihentikan pada epoch ke-36.
+sejak epoch ke-10, dengan celah yang tidak melebar hingga epoch terakhir. Pola ini
+menandakan bahwa model tidak mengalami overfitting berat. Perhatikan bahwa loss latih
+justru masih berada di atas loss validasi pada sebagian besar epoch, yang kembali
+merupakan efek dropout. Karena tidak ada tanda kenaikan loss validasi yang konsisten,
+early stopping tidak pernah aktif dan pelatihan berhenti karena batas epoch tercapai,
+bukan karena dihentikan lebih awal.
 
 ### 3.1.2. Pelatihan Model Binary (CDC Diabetes)
 
 Model binary dilatih dengan maksimum 40 epoch dan early stopping dengan `patience=5`.
-Pelatihan terhenti pada epoch ke-8, dan bobot dikembalikan ke kondisi terbaik yang
-dicapai pada epoch ke-3.
+Pelatihan terhenti pada epoch ke-23, dan bobot dikembalikan ke kondisi terbaik yang
+dicapai pada epoch ke-18.
 
 | Epoch | Acc. latih | Acc. validasi | Loss latih | Loss validasi |
 |---|---|---|---|---|
-| 1 | 0,6975 | 0,7047 | 0,5292 | 0,5187 |
-| 2 | 0,7046 | 0,7171 | 0,5134 | 0,5108 |
-| **3** | **0,7090** | **0,7169** | **0,5106** | **0,4972** |
-| 4 | 0,7089 | 0,7098 | 0,5088 | 0,5127 |
-| 5 | 0,7080 | 0,7161 | 0,5073 | 0,5018 |
-| 6 | 0,7101 | 0,7136 | 0,5075 | 0,5015 |
-| 7 | 0,7116 | 0,7147 | 0,5059 | 0,5048 |
-| 8 | 0,7126 | 0,7105 | 0,5056 | 0,5204 |
+| 1 | 0,6954 | 0,6933 | 0,5345 | 0,5275 |
+| 2 | 0,7042 | 0,7025 | 0,5143 | 0,5232 |
+| 3 | 0,7081 | 0,7049 | 0,5110 | 0,5160 |
+| 5 | 0,7102 | 0,7093 | 0,5081 | 0,5129 |
+| 10 | 0,7104 | 0,7093 | 0,5058 | 0,5126 |
+| 13 | 0,7119 | 0,7116 | 0,5047 | 0,5082 |
+| **18** | **0,7114** | **0,7130** | **0,5023** | **0,5081** |
+| 20 | 0,7133 | 0,7099 | 0,5024 | 0,5114 |
+| 22 | 0,7130 | 0,7071 | 0,5025 | 0,5140 |
+| 23 | 0,7121 | 0,7096 | 0,5027 | 0,5160 |
 
 Perilaku pelatihan model ini berbeda dari model multi-class. Loss validasi mencapai
-titik terendah pada epoch ke-3 (0,4972), lalu **naik** kembali hingga 0,5204 pada epoch
-ke-8, sementara loss latih terus menurun secara perlahan dari 0,5292 ke 0,5056. Pola
-ini merupakan tanda awal *overfitting*: model mulai menghafal data latih dan kehilangan
+titik terendah pada epoch ke-18 (0,5081), lalu **naik** kembali hingga 0,5160 pada epoch
+ke-23, sementara loss latih relatif mendatar di kisaran 0,502--0,503. Pola ini
+merupakan tanda awal *overfitting*: model mulai menghafal data latih dan kehilangan
 kemampuan generalisasi.
 
-Early stopping bekerja tepat pada kondisi ini. Pelatihan dihentikan pada epoch ke-8,
-dan bobot dikembalikan ke kondisi epoch ke-3 yang memiliki loss validasi terendah.
-Dengan demikian, model yang dievaluasi pada Bab 3.2 adalah model pada epoch ke-3,
-bukan model pada epoch ke-8 yang performanya lebih buruk.
+Early stopping bekerja tepat pada kondisi ini. Pelatihan dihentikan pada epoch ke-23,
+dan bobot dikembalikan ke kondisi epoch ke-18 yang memiliki loss validasi terendah.
+Dengan demikian, model yang dievaluasi pada Bab 3.2 adalah model pada epoch ke-18,
+bukan model pada epoch ke-23 yang performanya lebih buruk.
 
 Perlu diperhatikan bahwa akurasi yang dicapai model ini hanya sekitar 0,71, jauh di
 bawah angka 0,86 yang dapat dicapai oleh model yang selalu menebak kelas mayoritas.
@@ -727,21 +740,21 @@ data uji yang sama.
 
 | Metrik | Tanpa class weight | Dengan class weight | Perubahan |
 |---|---|---|---|
-| Accuracy | 0,8649 | 0,7133 | -0,1516 |
-| Recall | 0,1508 | **0,8025** | **+0,6517** |
-| F1-score | 0,2372 | 0,4382 | +0,2010 |
+| Accuracy | 0,8640 | 0,7087 | -0,1553 |
+| Recall | 0,1382 | **0,8137** | **+0,6755** |
+| F1-score | 0,2207 | 0,4377 | +0,2170 |
 
 Hasil ini merupakan temuan paling penting pada eksperimen binary. Penjelasannya
 adalah sebagai berikut.
 
-Model **tanpa** bobot kelas memperoleh akurasi tinggi (86,49%) karena model tersebut
+Model **tanpa** bobot kelas memperoleh akurasi tinggi (86,40%) karena model tersebut
 menemukan strategi termudah: menebak hampir semua data sebagai kelas mayoritas ("tidak
-diabetes"). Akurasi tinggi ini menyesatkan, karena recall-nya hanya **0,1508**. Artinya,
-dari 100 penderita diabetes, hanya **15 orang** yang berhasil terdeteksi, sementara
-**85 orang lainnya lolos** tanpa teridentifikasi.
+diabetes"). Akurasi tinggi ini menyesatkan, karena recall-nya hanya **0,1382**. Artinya,
+dari 100 penderita diabetes, hanya **13 orang** yang berhasil terdeteksi, sementara
+**87 orang lainnya lolos** tanpa teridentifikasi.
 
-Model **dengan** bobot kelas menghasilkan akurasi lebih rendah (71,33%), tetapi
-recall-nya melonjak menjadi **0,8025**. Artinya, dari 100 penderita diabetes, **80 orang**
+Model **dengan** bobot kelas menghasilkan akurasi lebih rendah (70,87%), tetapi
+recall-nya melonjak menjadi **0,8137**. Artinya, dari 100 penderita diabetes, **81 orang**
 berhasil terdeteksi.
 
 Apabila hanya melihat angka akurasi, model tanpa bobot kelas tampak lebih baik. Namun
@@ -759,22 +772,22 @@ lain dipertahankan identik.
 
 | Arsitektur | Accuracy | Selisih terhadap baseline |
 |---|---|---|
-| 64-32 (baseline) | 0,9251 | — |
-| **128-64** | **0,9273** | **+0,22 poin persen** |
-| 128-64-32 | 0,9218 | -0,33 poin persen |
+| 64-32 (baseline) | 0,9214 | — |
+| **128-64** | **0,9254** | **+0,40 poin persen** |
+| 128-64-32 | 0,9240 | +0,26 poin persen |
 
 Hasil ini menunjukkan dua hal.
 
 **Pertama, penambahan lebar jaringan memberi perbaikan yang sangat kecil.** Memperbesar
-layer dari 64-32 menjadi 128-64 hanya menaikkan akurasi sebesar 0,22 poin persen.
+layer dari 64-32 menjadi 128-64 hanya menaikkan akurasi sebesar 0,40 poin persen.
 Kenaikan sekecil ini berada dalam rentang variasi acak yang dapat muncul hanya karena
 perbedaan inisialisasi bobot awal.
 
-**Kedua, penambahan kedalaman jaringan justru menurunkan performa.** Arsitektur tiga
-layer tersembunyi (128-64-32) menghasilkan akurasi 0,9218, lebih rendah 0,33 poin persen
-daripada baseline dua layer. Dengan hanya 10.888 data latih dan 16 fitur, jaringan yang
-lebih dalam memiliki kapasitas berlebih (*overcapacity*) sehingga cenderung menghafal
-data latih.
+**Kedua, penambahan kedalaman jaringan tidak memberi perbaikan yang berarti.**
+Arsitektur tiga layer tersembunyi (128-64-32) menghasilkan akurasi 0,9240, hanya
+0,26 poin persen lebih tinggi daripada baseline dua layer. Dengan hanya 10.888 data
+latih dan 16 fitur, jaringan yang lebih dalam tidak memiliki cukup data untuk
+memanfaatkan kapasitas tambahannya secara berarti.
 
 Kesimpulan dari eksperimen ini adalah bahwa **performa model dibatasi oleh kualitas
 informasi pada data, bukan oleh kapasitas model**. Menambah neuron atau layer tidak
@@ -794,26 +807,26 @@ tujuh nilai keluaran softmax.
 
 | Metrik | Nilai |
 |---|---|
-| Accuracy | 0,9225 |
-| Precision (macro) | 0,9370 |
-| Recall (macro) | 0,9332 |
-| F1-score (macro) | 0,9350 |
-| ROC-AUC (OvR, macro) | 0,9952 |
+| Accuracy | 0,9240 |
+| Precision (macro) | 0,9380 |
+| Recall (macro) | 0,9339 |
+| F1-score (macro) | 0,9357 |
+| ROC-AUC (OvR, macro) | 0,9956 |
 
-Model mencapai akurasi **92,25%**, yang berarti dari 2.723 data uji, sekitar 2.512 data
+Model mencapai akurasi **92,40%**, yang berarti dari 2.723 data uji, sebanyak 2.516 data
 berhasil diklasifikasikan dengan benar.
 
 **Metrik per kelas:**
 
 | Kelas | Precision | Recall | F1-score | Jumlah data uji |
 |---|---|---|---|---|
-| BARBUNYA | 0,94 | 0,89 | 0,92 | 265 |
+| BARBUNYA | 0,94 | 0,91 | 0,92 | 265 |
 | BOMBAY | 1,00 | 1,00 | 1,00 | 104 |
 | CALI | 0,94 | 0,94 | 0,94 | 326 |
-| DERMASON | 0,90 | 0,92 | 0,91 | 709 |
+| DERMASON | 0,90 | 0,94 | 0,92 | 709 |
 | HOROZ | 0,96 | 0,96 | 0,96 | 386 |
-| SEKER | 0,94 | 0,96 | 0,95 | 406 |
-| SIRA | 0,87 | 0,85 | 0,86 | 527 |
+| SEKER | 0,95 | 0,96 | 0,95 | 406 |
+| SIRA | 0,89 | 0,83 | 0,86 | 527 |
 
 **Confusion matrix** (baris menyatakan kelas aktual, kolom menyatakan kelas prediksi;
 BAR = BARBUNYA, BOM = BOMBAY, CAL = CALI, DER = DERMASON, HOR = HOROZ, SEK = SEKER,
@@ -821,13 +834,13 @@ SIR = SIRA):
 
 | Aktual | BAR | BOM | CAL | DER | HOR | SEK | SIR |
 |:-------------------|----:|----:|----:|----:|----:|----:|----:|
-| BARBUNYA | **237** | 0 | 17 | 0 | 1 | 4 | 6 |
+| BARBUNYA | **240** | 0 | 16 | 0 | 0 | 3 | 6 |
 | BOMBAY | 0 | **104** | 0 | 0 | 0 | 0 | 0 |
-| CALI | 9 | 0 | **308** | 0 | 5 | 2 | 2 |
-| DERMASON | 0 | 0 | 0 | **655** | 0 | 10 | 44 |
-| HOROZ | 1 | 0 | 2 | 5 | **372** | 0 | 6 |
-| SEKER | 2 | 0 | 0 | 6 | 0 | **388** | 10 |
-| SIRA | 2 | 0 | 1 | 60 | 9 | 7 | **448** |
+| CALI | 10 | 0 | **307** | 0 | 5 | 2 | 2 |
+| DERMASON | 0 | 0 | 0 | **667** | 0 | 10 | 32 |
+| HOROZ | 1 | 0 | 4 | 6 | **370** | 0 | 5 |
+| SEKER | 2 | 0 | 0 | 5 | 0 | **388** | 11 |
+| SIRA | 3 | 0 | 1 | 67 | 9 | 7 | **440** |
 
 ![Confusion matrix model multi-class](../output/figures/cm_multi.png)
 
@@ -838,70 +851,71 @@ satu pun kesalahan. Hal ini wajar karena BOMBAY adalah varietas dengan ukuran pa
 kecil dan bentuk paling khas, sehingga sangat berbeda secara geometris dari enam kelas
 lainnya.
 
-**SIRA merupakan kelas tersulit.** Dari 527 data SIRA, sebanyak 60 data (11,4%) salah
+**SIRA merupakan kelas tersulit.** Dari 527 data SIRA, sebanyak 67 data (12,7%) salah
 diklasifikasikan sebagai DERMASON, dan 9 data sebagai HOROZ. Recall SIRA adalah yang
-terendah (0,85). Penyebabnya dapat dilihat pada confusion matrix: kesalahan SIRA hampir
+terendah (0,83). Penyebabnya dapat dilihat pada confusion matrix: kesalahan SIRA hampir
 seluruhnya mengarah ke DERMASON, yang menunjukkan bahwa kedua kelas ini memiliki
 karakteristik geometris yang saling tumpang tindih.
 
-**DERMASON juga banyak tertukar dengan SIRA.** Sebanyak 44 dari 709 data DERMASON
-(6,2%) diprediksi sebagai SIRA. Hubungan dua arah ini menegaskan bahwa batas antara
+**DERMASON juga banyak tertukar dengan SIRA.** Sebanyak 32 dari 709 data DERMASON
+(4,5%) diprediksi sebagai SIRA. Hubungan dua arah ini menegaskan bahwa batas antara
 SIRA dan DERMASON tidak dapat dipisahkan secara sempurna oleh 16 fitur geometris yang
 tersedia.
 
 **BARBUNYA memiliki precision tinggi tetapi recall lebih rendah.** Precision 0,94
 menunjukkan bahwa ketika model memprediksi BARBUNYA, hampir selalu benar. Namun recall
-0,89 menunjukkan masih ada data BARBUNYA yang terlewat, sebagian besar (17 data) salah
+0,91 menunjukkan masih ada data BARBUNYA yang terlewat, sebagian besar (16 data) salah
 diprediksi sebagai CALI.
 
-**F1-score macro lebih tinggi daripada accuracy.** Nilai F1 macro (0,9350) sedikit
-lebih tinggi daripada accuracy (0,9225). Ini merupakan indikasi yang baik: model tidak
+**F1-score macro lebih tinggi daripada accuracy.** Nilai F1 macro (0,9357) sedikit
+lebih tinggi daripada accuracy (0,9240). Ini merupakan indikasi yang baik: model tidak
 mengabaikan kelas-kelas kecil. Apabila model hanya pandai pada kelas besar, F1 macro
 akan jauh lebih rendah daripada accuracy.
 
 ### 3.2.2. Hasil Pengujian Model Binary (CDC Diabetes)
 
 Model binary diuji pada 50.736 data uji. Prediksi ditentukan dengan membandingkan
-probabilitas keluaran sigmoid terhadap threshold 0,5.
+probabilitas keluaran sigmoid terhadap threshold 0,5, yaitu nilai *default*. Pengaruh
+pemilihan threshold lain dibahas pada Bab 3.2.3.
 
 **Metrik evaluasi keseluruhan:**
 
 | Metrik | Nilai |
 |---|---|
-| Accuracy | 0,7133 |
-| Precision | 0,3014 |
-| Recall | 0,8025 |
-| F1-score | 0,4382 |
-| ROC-AUC | 0,8249 |
+| Accuracy | 0,7087 |
+| Precision | 0,2993 |
+| Recall | 0,8137 |
+| F1-score | 0,4377 |
+| ROC-AUC | 0,8261 |
 
 **Metrik per kelas:**
 
 | Kelas | Precision | Recall | F1-score | Jumlah data uji |
 |---|---|---|---|---|
-| Tidak Diabetes | 0,96 | 0,70 | 0,81 | 43.667 |
-| Diabetes | 0,30 | 0,80 | 0,44 | 7.069 |
+| Tidak Diabetes | 0,96 | 0,69 | 0,80 | 43.667 |
+| Diabetes | 0,30 | 0,81 | 0,44 | 7.069 |
 
 **Confusion matrix:**
 
 | Aktual $\backslash$ Prediksi | Tebak Sehat | Tebak Diabetes |
 |---|---|---|
-| **Aktual Sehat** | 30.519 (TN) | 13.148 (FP) |
-| **Aktual Diabetes** | 1.396 (FN) | 5.673 (TP) |
+| **Aktual Sehat** | 30.204 (TN) | 13.463 (FP) |
+| **Aktual Diabetes** | 1.317 (FN) | 5.752 (TP) |
 
 ![Confusion matrix model binary](../output/figures/cm_binary.png)
 
 Pembahasan confusion matrix di atas adalah sebagai berikut.
 
-**True Positive sebanyak 5.673.** Ini adalah jumlah penderita diabetes yang berhasil
-terdeteksi, setara dengan 80,25% dari total 7.069 penderita pada data uji.
+**True Positive sebanyak 5.752.** Ini adalah jumlah penderita diabetes yang berhasil
+terdeteksi, setara dengan 81,37% dari total 7.069 penderita pada data uji.
 
-**False Negative sebanyak 1.396.** Ini adalah penderita diabetes yang **lolos** karena
-diprediksi sebagai orang sehat. Angka ini mewakili 19,75% penderita yang tidak
+**False Negative sebanyak 1.317.** Ini adalah penderita diabetes yang **lolos** karena
+diprediksi sebagai orang sehat. Angka ini mewakili 18,63% penderita yang tidak
 terdeteksi. Dalam konteks medis, inilah kesalahan yang paling berbahaya.
 
-**False Positive sebanyak 13.148.** Ini adalah orang sehat yang salah diprediksi
+**False Positive sebanyak 13.463.** Ini adalah orang sehat yang salah diprediksi
 sebagai penderita diabetes. Jumlahnya cukup besar, dan inilah penyebab rendahnya nilai
-precision (0,3014). Secara praktis, angka ini berarti sekitar 30% dari orang yang
+precision (0,2993). Secara praktis, angka ini berarti hanya sekitar 30% dari orang yang
 dinyatakan positif benar-benar menderita diabetes, sementara 70% sisanya merupakan
 kesalahan.
 
@@ -912,75 +926,88 @@ lolos. Strategi ini konsisten dengan prinsip skrining kesehatan: lebih baik mela
 pemeriksaan lanjutan terhadap orang sehat daripada melewatkan seorang penderita
 diabetes.
 
-**ROC-AUC sebesar 0,8249** merupakan metrik yang paling jujur untuk menilai model ini.
+**ROC-AUC sebesar 0,8261** merupakan metrik yang paling jujur untuk menilai model ini.
 Berbeda dengan accuracy, precision, atau recall yang bergantung pada pemilihan threshold
 0,5, ROC-AUC mengukur kemampuan model membedakan kedua kelas pada seluruh rentang
-threshold yang mungkin. Nilai 0,8249 menunjukkan bahwa model memiliki daya pembeda yang
+threshold yang mungkin. Nilai 0,8261 menunjukkan bahwa model memiliki daya pembeda yang
 cukup baik, jauh di atas tebakan acak (0,5).
 
 ### 3.2.3. Pengaruh Threshold terhadap Hasil Pengujian
 
 Model binary mengeluarkan nilai probabilitas, dan keputusan akhir ditentukan oleh
 sebuah threshold. Nilai threshold 0,5 hanyalah nilai *default*, bukan nilai yang
-tentu paling sesuai. Untuk menguji hal ini, threshold divariasikan dari 0,30 hingga
-0,80.
+tentu paling sesuai. Seluruh angka pada Bab 3.2.2 dihitung memakai threshold 0,5
+tersebut, sehingga berfungsi sebagai garis dasar pembanding. Untuk menguji apakah
+nilai default itu sudah tepat, threshold divariasikan dari 0,30 hingga 0,80.
 
 Penentuan threshold dilakukan menggunakan data validasi (15% dari data latih), bukan
 data uji, agar hasil evaluasi akhir tetap jujur.
 
 **Hasil pencarian threshold pada data validasi:**
 
-| Threshold | Accuracy | F1-score |
-|---|---|---|
-| 0,30 | 0,5776 | 0,3771 |
-| 0,35 | 0,6107 | 0,3917 |
-| 0,40 | 0,6446 | 0,4061 |
-| 0,45 | 0,6806 | 0,4234 |
-| 0,50 | 0,7169 | 0,4408 |
-| 0,55 | 0,7514 | 0,4545 |
-| 0,60 | 0,7858 | 0,4672 |
-| **0,65** | 0,8141 | **0,4698** |
-| 0,70 | 0,8389 | 0,4594 |
-| 0,75 | 0,8549 | 0,4140 |
-| 0,80 | 0,8649 | 0,3307 |
+| Threshold | Accuracy | Recall | F1-score |
+|---|---|---|---|
+| 0,30 | 0,5677 | 0,9342 | 0,3724 |
+| 0,35 | 0,5996 | 0,9160 | 0,3859 |
+| 0,40 | 0,6320 | 0,8967 | 0,4009 |
+| 0,45 | 0,6699 | 0,8634 | 0,4180 |
+| 0,50 | 0,7130 | 0,8199 | 0,4396 |
+| 0,55 | 0,7550 | 0,7510 | 0,4570 |
+| 0,60 | 0,7876 | 0,6833 | 0,4691 |
+| **0,65** | 0,8136 | 0,6079 | **0,4724** |
+| 0,70 | 0,8342 | 0,5251 | 0,4652 |
+| 0,75 | 0,8496 | 0,4316 | 0,4408 |
+| 0,80 | 0,8615 | 0,3086 | 0,3796 |
 
-Nilai F1-score meningkat seiring naiknya threshold hingga mencapai puncak pada
-threshold 0,65, kemudian menurun kembali. Pola ini menunjukkan adanya titik optimum
-yang berbeda dari nilai default 0,5.
+Tabel di atas memperlihatkan pola yang konsisten: menaikkan threshold menaikkan
+accuracy dan F1-score, tetapi menurunkan recall secara tajam. F1-score mencapai puncak
+pada threshold 0,65, kemudian menurun kembali. Titik optimum F1 memang berbeda dari
+nilai default 0,5.
 
 **Hasil penerapan pada data uji:**
 
 | Threshold | Accuracy | Precision | Recall | F1-score |
 |---|---|---|---|---|
-| 0,50 | 0,7133 | 0,3014 | **0,8025** | 0,4382 |
-| 0,60 | **0,7824** | **0,3526** | 0,6719 | **0,4625** |
+| 0,50 | 0,7087 | 0,2993 | **0,8137** | 0,4377 |
+| **0,60** | **0,7841** | 0,3544 | 0,6687 | 0,4633 |
+| 0,65 | 0,8093 | **0,3817** | 0,5947 | **0,4650** |
 
 Menaikkan threshold dari 0,5 ke 0,6 menghasilkan:
 
-- Accuracy naik dari 0,7133 menjadi 0,7824 (+6,91 poin persen)
-- F1-score naik dari 0,4382 menjadi 0,4625 (+2,43 poin persen)
-- Precision naik dari 0,3014 menjadi 0,3526 (+5,12 poin persen)
-- **Recall turun** dari 0,8025 menjadi 0,6719 (-13,06 poin persen)
+- Accuracy naik dari 0,7087 menjadi 0,7841 (+7,54 poin persen)
+- F1-score naik dari 0,4377 menjadi 0,4633 (+2,56 poin persen)
+- Precision naik dari 0,2993 menjadi 0,3544 (+5,51 poin persen)
+- **Recall turun** dari 0,8137 menjadi 0,6687 (-14,50 poin persen)
 
-**Pemilihan threshold akhir.** Meskipun threshold 0,6 menghasilkan accuracy dan
-F1-score yang lebih tinggi, pada eksperimen ini **threshold 0,5 dipertahankan** sebagai
-konfigurasi utama. Alasannya adalah konteks penggunaan model. Untuk keperluan skrining
-diabetes, recall merupakan metrik yang paling kritis: penderita yang lolos (false
-negative) akan kehilangan kesempatan memperoleh penanganan dini. Dengan threshold 0,5,
-recall mencapai 0,8025; dengan threshold 0,6, recall turun menjadi 0,6719, yang berarti
-sekitar 13 dari 100 penderita tambahan akan terlewat.
+Menaikkan threshold lebih jauh ke 0,65 hanya menambah accuracy 2,52 poin persen dan
+F1-score 0,17 poin persen, tetapi recall kembali turun 7,40 poin persen.
+
+**Pemilihan threshold akhir.** Berdasarkan kedua tabel tersebut, **threshold 0,60
+dipilih** sebagai konfigurasi utama, bukan 0,65 yang unggul tipis pada F1-score.
+Alasannya adalah konteks penggunaan model. Selisih F1-score antara 0,60 dan 0,65 hanya
+0,17 poin persen dan dapat dianggap tidak berarti, sedangkan selisih recall-nya mencapai
+7,40 poin persen. Untuk keperluan skrining diabetes, recall merupakan metrik yang paling
+kritis: penderita yang lolos (false negative) akan kehilangan kesempatan memperoleh
+penanganan dini. Threshold 0,60 memberi keseimbangan yang lebih baik antara mengurangi
+alarm palsu dan tetap mendeteksi sebagian besar penderita.
+
+Sebagai perbandingan, threshold default 0,5 memang memberi recall tertinggi (0,8137),
+tetapi accuracy-nya hanya 0,7087 dan precision 0,2993. Pada threshold tersebut, sekitar
+tujuh dari sepuluh orang yang dinyatakan berisiko ternyata sehat, sehingga beban
+pemeriksaan lanjutan menjadi sangat besar. Threshold 0,60 menurunkan angka tersebut
+tanpa mengorbankan terlalu banyak kemampuan deteksi.
 
 Keputusan ini menunjukkan bahwa pemilihan threshold bukan semata-mata persoalan
-mengoptimalkan angka, melainkan bergantung pada **biaya relatif dari setiap jenis
+mengoptimalkan satu angka, melainkan bergantung pada **biaya relatif dari setiap jenis
 kesalahan** dalam konteks permasalahan yang dihadapi.
 
 ### 3.2.4. Analisis Perbandingan Kedua Dataset
 
 | Aspek | Dry Bean (multi-class) | CDC Diabetes (binary) |
 |---|---|---|
-| Accuracy | 0,9225 | 0,7133 |
-| F1-score | 0,9350 (macro) | 0,4382 |
-| ROC-AUC | 0,9952 (OvR) | 0,8249 |
+| Accuracy | 0,9240 | 0,7087 |
+| F1-score | 0,9357 (macro) | 0,4377 |
+| ROC-AUC | 0,9956 (OvR) | 0,8261 |
 | Jumlah kelas | 7 | 2 |
 | Kesulitan utama | Tumpang tindih SIRA--DERMASON | Ketidakseimbangan kelas dan fitur tumpang tindih |
 | Faktor penentu performa | Kualitas ciri geometris | Kualitas indikator kesehatan |
@@ -992,7 +1019,7 @@ Pada dataset Dry Bean, setiap kelas memiliki karakteristik geometris yang teruku
 secara jelas dan berbeda. Biji kacang dari varietas yang berbeda memang memiliki ukuran,
 bentuk, dan proporsi yang berbeda secara fisik. Karena itu, fitur seperti `Area`,
 `Perimeter`, dan `Eccentricity` mampu memisahkan kelas dengan baik. Angka ROC-AUC
-0,9952 menunjukkan hampir tidak ada tumpang tindih antar kelas dalam ruang fitur.
+0,9956 menunjukkan hampir tidak ada tumpang tindih antar kelas dalam ruang fitur.
 
 Pada dataset CDC Diabetes, situasinya berbeda secara mendasar. Fitur-fitur yang
 tersedia hanyalah indikator kesehatan umum seperti tekanan darah tinggi, kolesterol
@@ -1025,32 +1052,34 @@ categorical cross-entropy, sedangkan untuk kasus binary digunakan 1 neuron kelua
 dengan sigmoid dan binary cross-entropy.
 
 **2. Model multi-class mencapai performa yang baik.** Pada dataset Dry Bean, model
-memperoleh accuracy 0,9225, F1-score macro 0,9350, dan ROC-AUC 0,9952. Kelas BOMBAY
+memperoleh accuracy 0,9240, F1-score macro 0,9357, dan ROC-AUC 0,9956. Kelas BOMBAY
 terklasifikasi sempurna, sedangkan SIRA dan DERMASON merupakan kelas yang paling sering
 tertukar karena kemiripan karakteristik geometrisnya.
 
 **3. Penanganan data tidak seimbang melalui bobot kelas memberikan dampak yang
-signifikan pada model binary.** Tanpa bobot kelas, model memperoleh accuracy 0,8649
-tetapi recall hanya 0,1508, yang berarti 85% penderita diabetes tidak terdeteksi.
-Dengan bobot kelas, accuracy turun menjadi 0,7133 tetapi recall naik menjadi 0,8025.
+signifikan pada model binary.** Tanpa bobot kelas, model memperoleh accuracy 0,8640
+tetapi recall hanya 0,1382, yang berarti 86% penderita diabetes tidak terdeteksi.
+Dengan bobot kelas, accuracy turun menjadi 0,7087 tetapi recall naik menjadi 0,8137.
 Untuk konteks skrining kesehatan, konfigurasi dengan bobot kelas merupakan pilihan yang
 lebih tepat.
 
 **4. Accuracy bukan metrik yang memadai untuk data tidak seimbang.** Hasil eksperimen
-menunjukkan secara langsung bahwa model dengan accuracy lebih tinggi (0,8649) justru
+menunjukkan secara langsung bahwa model dengan accuracy lebih tinggi (0,8640) justru
 memiliki kemampuan deteksi yang jauh lebih buruk. Evaluasi model pada data tidak
 seimbang harus melibatkan recall, F1-score, dan ROC-AUC secara bersamaan.
 
 **5. Peningkatan kapasitas model tidak menghasilkan perbaikan yang berarti.** Tiga
 konfigurasi arsitektur diuji, dan seluruhnya menghasilkan performa dalam kisaran
-0,9218--0,9273, dengan selisih maksimum hanya 0,55 poin persen. Penambahan layer
-ketiga justru menurunkan performa. Hal ini membuktikan bahwa batas performa ditentukan
-oleh kualitas fitur pada dataset, bukan oleh kapasitas jaringan.
+0,9214--0,9254, dengan selisih maksimum hanya 0,40 poin persen. Penambahan layer
+ketiga tidak memberi perbaikan yang berarti. Hal ini membuktikan bahwa batas performa
+ditentukan oleh kualitas fitur pada dataset, bukan oleh kapasitas jaringan.
 
 **6. Optimasi threshold memberikan perbaikan yang lebih besar daripada perubahan
-arsitektur.** Dengan menaikkan threshold dari 0,5 menjadi 0,6, accuracy meningkat 6,91
-poin persen dan F1-score meningkat 2,43 poin persen. Namun peningkatan ini disertai
-penurunan recall sebesar 13,06 poin persen, sehingga pemilihan threshold harus
+arsitektur.** Dengan menaikkan threshold dari 0,5 menjadi 0,6, accuracy meningkat 7,54
+poin persen dan F1-score meningkat 2,56 poin persen. Namun peningkatan ini disertai
+penurunan recall sebesar 14,50 poin persen. Threshold 0,60 dipilih sebagai konfigurasi
+akhir karena selisih F1-score-nya dengan threshold 0,65 hanya 0,17 poin persen,
+sementara selisih recall-nya mencapai 7,40 poin persen. Pemilihan threshold harus
 disesuaikan dengan konteks penggunaan dan biaya relatif dari setiap jenis kesalahan.
 
 **7. Standardisasi fitur dan pencegahan kebocoran data merupakan tahap yang krusial.**
