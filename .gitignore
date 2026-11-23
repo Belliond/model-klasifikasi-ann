@@ -63,3 +63,4 @@ desktop.ini
 .env.local
 *.key
 secrets.*
+output/reports/*.html

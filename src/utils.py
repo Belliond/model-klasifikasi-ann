@@ -10,7 +10,19 @@ import json
 from pathlib import Path
 
 import matplotlib
-matplotlib.use("Agg")  # aman untuk export PDF non-interaktif
+
+# Di dalam notebook (VS Code / JupyterLab) biarkan backend inline supaya grafik
+# tampil langsung di bawah sel dan ikut ter-export ke PDF.
+# Di luar notebook (skrip .py), pakai Agg agar tidak membuka jendela.
+try:
+    from IPython import get_ipython
+
+    _IN_NOTEBOOK = get_ipython() is not None
+except Exception:  # IPython tidak tersedia
+    _IN_NOTEBOOK = False
+
+if not _IN_NOTEBOOK:
+    matplotlib.use("Agg")
 
 import matplotlib.pyplot as plt
 import numpy as np
